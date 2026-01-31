@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { 
   Plus, 
   Package, 
@@ -93,10 +94,12 @@ export default function SellerDashboard() {
             <h1 className="text-3xl font-black text-zinc-900 mb-2">Seller Dashboard</h1>
             <p className="text-zinc-500">Manage your gadget listings and escrow statuses.</p>
           </div>
-          <Button className="rounded-full bg-zinc-900 hover:bg-zinc-800 h-12 px-6">
-            <Plus className="w-4 h-4 mr-2" />
-            List New Gadget
-          </Button>
+          <Link href="/dashboard/new">
+            <Button className="rounded-full bg-zinc-900 hover:bg-zinc-800 h-12 px-6">
+              <Plus className="w-4 h-4 mr-2" />
+              List New Gadget
+            </Button>
+          </Link>
         </div>
 
         {/* Stats Grid */}
