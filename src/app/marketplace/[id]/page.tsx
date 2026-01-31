@@ -5,35 +5,107 @@ import { useState } from "react";
 import Link from "next/link";
 import { 
   ShieldCheck, 
-  Clock, 
+  Clock,
   ArrowLeft, 
-  Shield, 
-  User, 
-  History,
   CheckCircle2,
   Lock,
   Box,
   Fingerprint,
   Split,
   ChevronRight,
-  Info
+  Info,
+  History as HistoryIcon
 } from "lucide-react";
-import { WARRANTY_ITEMS, WarrantyItem } from "@/lib/data";
+// import { WARRANTY_ITEMS, WarrantyItem } from "@/lib/data"; // Removed static
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { useMarketplaceItem } from "@/sui/hooks/useMarketplaceItems";
+import { useWarrantyProtocol } from "@/sui/hooks/useWarrantyProtocol";
+import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit";
+import { MOCK_USDC_TYPE } from "@/sui/config";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
-  const item = WARRANTY_ITEMS.find(g => g.id === id);
+  const { item, isLoading } = useMarketplaceItem(id as string);
+  const { lockFunds, finalizeAndSplit, mintMockUsdc } = useWarrantyProtocol();
+  const account = useCurrentAccount();
+  
   const [settlementAmount, setSettlementAmount] = useState<number>(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Fetch User's Coins for the specific Item Type
+  const { data: userCoins } = useSuiClientQuery('getCoins', {
+    owner: account?.address || '',
+    coinType: item?.coinType // Dynamically fetch coins matching the item
+  }, {
+    enabled: !!account && !!item?.coinType
+  });
+
+  // Helper for Mock USDC Minting
+  const handleMint = async () => {
+    try {
+        setIsProcessing(true);
+        await mintMockUsdc(1000000000); // Mint 1000 USDC (assuming 6 decimals)
+        alert("Minted MOCK USDC! Refreshing balance...");
+        window.location.reload();
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setIsProcessing(false);
+    }
+  }
+
+  const handleLockFunds = async () => {
+    try {
+        if (!item || !account) return;
+        
+        // AUTOMATIC COIN SELECTION
+        // Find a coin with enough balance
+        const suitableCoin = userCoins?.data.find(coin => BigInt(coin.balance) >= BigInt(item.price));
+
+        if (!suitableCoin) {
+            alert(`Insufficient Balance! You need at least ${item.price / 1_000_000} ${item.coinType.includes('USDC') ? 'USDC' : 'Tokens'}. Try minting some if this is a testnet token.`);
+            return;
+        }
+
+        setIsProcessing(true);
+        // Use the automatically selected coin + the Item's Coin Type
+        await lockFunds(item.id, item.price, suitableCoin.coinObjectId, item.coinType);
+        alert("Funds locked successfully!");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to lock funds. Check console.");
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+     try {
+        if (!item) return;
+        setIsProcessing(true);
+        await finalizeAndSplit(item.id, settlementAmount, item.coinType);
+        alert("Transaction finalized!");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to finalize transaction.");
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  if (isLoading) {
+      return <div className="pt-32 pb-20 text-center"><h1 className="text-xl">Loading NFT Details...</h1></div>;
+  }
 
   if (!item) {
     return (
       <div className="pt-32 pb-20 text-center">
         <h1 className="text-2xl font-bold">Listing NFT not found</h1>
+        <p className="text-zinc-500 mb-4">The object ID {id} could not be fetched.</p>
         <Button asChild className="mt-4">
           <Link href="/marketplace">Back to Marketplace</Link>
         </Button>
@@ -42,7 +114,7 @@ export default function ProductDetailPage() {
   }
 
   // Initialize settlement amount to price if not already set (for UI demo)
-  if (settlementAmount === 0) setSettlementAmount(item.price);
+  if (settlementAmount === 0 && item.price) setSettlementAmount(item.price);
 
   const getStatusDisplay = (status: number) => {
     switch(status) {
@@ -65,6 +137,16 @@ export default function ProductDetailPage() {
           <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
           Back to Inventory
         </Link>
+        
+        {/* Debug Mint Button (Optional) */}
+        {account && (
+             <div className="mb-4 text-right">
+                 <Button variant="outline" size="sm" onClick={handleMint} disabled={isProcessing}>
+                    Mint Test MOCK USDC (Faucet)
+                 </Button>
+             </div>
+        )}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
           {/* Left: Images & NFT Identity */}
@@ -96,7 +178,7 @@ export default function ProductDetailPage() {
             <Card className="border-zinc-100 bg-zinc-50/50 rounded-[2rem]">
               <CardContent className="p-8">
                 <h3 className="text-lg font-bold text-zinc-900 mb-6 flex items-center gap-2">
-                  <History className="w-5 h-5" />
+                  <HistoryIcon className="w-5 h-5" />
                   On-Chain History
                 </h3>
                 <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[1px] before:bg-zinc-200">
@@ -143,8 +225,10 @@ export default function ProductDetailPage() {
               </h1>
               <div className="flex items-center gap-6">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-black text-zinc-900">{item.price}</span>
-                  <span className="text-xl font-bold text-zinc-400">SUI</span>
+                  <span className="text-5xl font-black text-zinc-900">
+                    {(item.price / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                  </span>
+                  <span className="text-xl font-bold text-zinc-400">USDC</span>
                 </div>
                 <div className="h-10 w-[1px] bg-zinc-100" />
                 <div className="flex items-center gap-2 text-blue-600 font-bold bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
@@ -174,23 +258,30 @@ export default function ProductDetailPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-end">
                         <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Seller receives</label>
-                        <div className="text-2xl font-black text-blue-600">{settlementAmount} SUI</div>
+                        <div className="text-2xl font-black text-blue-600">
+                            {(settlementAmount / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2 })} USDC
+                        </div>
                       </div>
                       <Slider 
                         value={[settlementAmount]} 
                         max={item.price} 
-                        step={1} 
+                        step={100_000} // Step by 0.1 USDC
                         onValueChange={(val) => setSettlementAmount(val[0])}
                         className="py-4"
                       />
                       <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-blue-100">
                         <div className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Auto-refund to you</div>
-                        <div className="text-lg font-black text-green-600">{item.price - settlementAmount} SUI</div>
+                        <div className="text-lg font-black text-green-600">
+                            {((item.price - settlementAmount) / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2 })} USDC
+                        </div>
                       </div>
                     </div>
 
-                    <Button className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-lg font-bold shadow-lg shadow-blue-200 transition-all">
-                      Finalize & Split Funds
+                    <Button 
+                        onClick={handleFinalize} 
+                        disabled={isProcessing}
+                        className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-lg font-bold shadow-lg shadow-blue-200 transition-all">
+                      {isProcessing ? 'Processing Transaction...' : 'Finalize & Split Funds'}
                     </Button>
                     <p className="text-center text-[10px] text-zinc-400 font-bold uppercase tracking-wider">
                       This action burns the Listing NFT and distributes funds on-chain.
@@ -216,14 +307,32 @@ export default function ProductDetailPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <Button size="lg" className="flex-1 rounded-full h-14 text-lg bg-zinc-900 hover:bg-zinc-800 shadow-xl shadow-zinc-200">
-                    Lock Funds & Buy
-                  </Button>
-                  <Button variant="outline" size="lg" className="rounded-full h-14 text-lg border-zinc-200 px-8">
-                    Message Seller
-                  </Button>
-                </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                       <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 flex justify-between">
+                          <span>Your Balance</span>
+                          <span className={
+                              (userCoins?.data.reduce((acc, coin) => acc + Number(coin.balance), 0) || 0) >= item.price
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }>
+                              {((userCoins?.data.reduce((acc, coin) => acc + Number(coin.balance), 0) || 0) / 1_000_000).toLocaleString()} {item.coinType.split('::').pop()}
+                          </span>
+                       </div>
+                       <Button 
+                        size="lg" 
+                        className="w-full rounded-full h-14 text-lg bg-zinc-900 hover:bg-zinc-800 shadow-xl shadow-zinc-200"
+                        onClick={handleLockFunds}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? 'Processing...' : 'Lock Funds & Buy'}
+                      </Button>
+                    </div>
+
+                    <Button variant="outline" size="lg" className="rounded-full h-14 text-lg border-zinc-200 px-8">
+                      Message Seller
+                    </Button>
+                  </div>
               </div>
             ) : (
               <div className="p-12 rounded-[3.5rem] bg-zinc-50 border border-zinc-100 text-center">
@@ -247,11 +356,11 @@ export default function ProductDetailPage() {
                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-zinc-200" />
                     <div>
-                      <div className="text-xs font-bold text-zinc-900">Seller: {item.seller}</div>
+                      <div className="text-xs font-bold text-zinc-900">Seller: {item.seller.substring(0, 10)}...</div>
                       <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Verified Merchant</div>
                     </div>
                  </div>
-                 <Badge variant="ghost" className="text-zinc-400 font-bold text-[10px]">99.8% TRUST SCORE</Badge>
+                 <Badge variant="outline" className="text-zinc-400 font-bold text-[10px] border-none">99.8% TRUST SCORE</Badge>
               </div>
             </div>
           </div>

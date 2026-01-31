@@ -13,7 +13,9 @@ import {
   Box,
   Fingerprint
 } from "lucide-react";
-import { WARRANTY_ITEMS, WarrantyItem } from "@/lib/data";
+import { useMarketplaceItems } from "@/sui/hooks/useMarketplaceItems";
+// import { WARRANTY_ITEMS, WarrantyItem } from "@/lib/data"; // Removed static import
+import { WarrantyItem } from "@/lib/data"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,14 +26,16 @@ import {
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "@/components/ui/select";
+} from "@/components/ui/select"; 
 
 export default function MarketplacePage() {
+  const { items: marketplaceItems, isLoading, error } = useMarketplaceItems();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedCondition, setSelectedCondition] = useState<string>("all");
 
-  const filteredItems = WARRANTY_ITEMS.filter(item => {
+  const filteredItems = marketplaceItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.brand.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || item.category.toLowerCase() === selectedCategory.toLowerCase();
@@ -162,7 +166,7 @@ export default function MarketplacePage() {
                       
                       <div className="flex items-center gap-4 mb-6">
                         <div className="text-2xl font-black text-zinc-900 flex items-baseline gap-1">
-                          {item.price} <span className="text-sm font-bold text-zinc-400">SUI</span>
+                          {(item.price / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} <span className="text-sm font-bold text-zinc-400">USDC</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 bg-zinc-50 px-2.5 py-1 rounded-full border border-zinc-100">
                           <Clock className="w-3 h-3" />

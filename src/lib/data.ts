@@ -10,6 +10,7 @@ export interface WarrantyItem {
   seller: string; // Address
   buyer?: string; // Address
   balance: number; // Escrowed funds
+  coinType: string; // The Coin Type accepted (e.g., SUI or MOCK_USDC)
   
   // Metadata for the Gadget marketplace context
   category: "Laptop" | "Phone" | "Tablet" | "Wearable";
@@ -37,6 +38,7 @@ export const WARRANTY_ITEMS: WarrantyItem[] = [
     brand: "Apple",
     condition: "Mint",
     inspectionDays: 3,
+    coinType: '0x2::sui::SUI',
     history: [
       { date: "Jan 2026", event: "NFT Created & Listed", txHash: "0x12...34" }
     ]
@@ -55,6 +57,7 @@ export const WARRANTY_ITEMS: WarrantyItem[] = [
     brand: "Apple",
     condition: "Excellent",
     inspectionDays: 2,
+    coinType: '0x2::sui::SUI',
     history: [
       { date: "Jan 2026", event: "NFT Created & Listed", txHash: "0x56...78" },
       { date: "Jan 2026", event: "Funds Locked by Buyer", txHash: "0x90...ab" }
@@ -74,6 +77,7 @@ export const WARRANTY_ITEMS: WarrantyItem[] = [
     brand: "Dell",
     condition: "Good",
     inspectionDays: 3,
+    coinType: '0x2::sui::SUI',
     history: [
       { date: "Dec 2025", event: "NFT Created & Listed", txHash: "0xcd...ef" },
       { date: "Jan 2026", event: "Funds Locked by Buyer", txHash: "0xgh...ij" },
@@ -93,6 +97,7 @@ export const WARRANTY_ITEMS: WarrantyItem[] = [
     brand: "Apple",
     condition: "Mint",
     inspectionDays: 2,
+    coinType: '0x2::sui::SUI',
     history: [
       { date: "Jan 2026", event: "NFT Created & Listed", txHash: "0xop...qr" }
     ]

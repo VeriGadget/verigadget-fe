@@ -5,6 +5,7 @@ import ErrorReporter from "@/components/ErrorReporter";
 import Script from "next/script";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "VeriGadget | Secure Used Gadget Marketplace",
@@ -18,7 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="antialiased font-sans bg-white">
+        <Providers>
+          <body className="antialiased font-sans bg-white" suppressHydrationWarning>
         <Script
           id="orchids-browser-logs"
           src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts/orchids-browser-logs.js"
@@ -43,6 +45,7 @@ export default function RootLayout({
         <Footer />
         <VisualEditsMessenger />
       </body>
+      </Providers>
     </html>
   );
 }

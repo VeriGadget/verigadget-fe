@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ShieldCheck, Search, ShoppingBag, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { WalletConnect } from "./WalletConnect";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -58,18 +59,9 @@ export default function Navbar() {
 
         <div className="flex items-center gap-4">
           <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-full transition-colors">
-            <Search className="w-5 h-5" />
-          </button>
-          <button className="p-2 text-zinc-600 hover:bg-zinc-100 rounded-full transition-colors">
             <ShoppingBag className="w-5 h-5" />
           </button>
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-full hover:bg-zinc-800 transition-all"
-          >
-            <User className="w-4 h-4" />
-            <span>Account</span>
-          </Link>
+          <WalletConnect />
         </div>
       </div>
     </nav>
